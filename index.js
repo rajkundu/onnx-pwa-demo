@@ -218,7 +218,7 @@ async function onRunButtonPress() {
     });
 
     const table = document.querySelector("#multiOutputContainer table");
-    const columns = ["filename", "quality", "outputRaw"];
+    const columns = ["filename", "quality", "outputRaw", "inferenceTimeMs"];
     let thead = document.createElement("thead");
     thead.classList.add("table-light");
     thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
@@ -246,6 +246,7 @@ async function onRunButtonPress() {
             <td>${file.webkitRelativePath ? file.webkitRelativePath : file.name}</td>
             <td>${outputLabel}</td>
             <td>${outputRaw[0].toFixed(8)}</td>
+            <td>${allInferenceTimes[idx].toFixed(0)}</td>
         `;
         tbody.appendChild(tr);
     }
