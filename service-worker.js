@@ -1,19 +1,19 @@
 const CACHE_NAME = 'demo-pwa-cache-v1';
 const precacheResources = [
-  '/',
-  '/index.html',
+    '/',
+    '/index.html',
 
-  // all resources in index.html (in order of appearance)
-  'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js',
-  'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.css',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-  'https://cdn.jsdelivr.net/npm/tiff.js@1.0.0/tiff.min.js',
-  'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.js',
-  'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
-  '/caching.js',
-  '/models.js',
-  '/index.js',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js'
+    // all resources in index.html (in order of appearance)
+    'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js',
+    'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.css',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+    'https://cdn.jsdelivr.net/npm/tiff.js@1.0.0/tiff.min.js',
+    'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.js',
+    'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
+    '/caching.js',
+    '/models.js',
+    '/index.js',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -48,14 +48,25 @@ self.addEventListener('fetch', (e) => {
     }
 
     e.respondWith((async () => {
-        // Cache-first
-        const r = await caches.match(e.request);
-        if (r) return r;
-        // Fetch
-        const response = await fetch(e.request);
-        const cache = await caches.open(CACHE_NAME);
-        console.log(`[Service Worker] Caching new resource: ${e.request.url}`);
-        cache.put(e.request, response.clone());
-        return response;
+        // force ONNX files to be cache-first since they're large
+        if (e.request.url.endsWith(".onnx")) {
+            console.log("Returning ONNX from cache");
+            const r = await caches.match(e.request);
+            if (r) return r;
+        }
+
+        try {
+            // Fetch
+            const response = await fetch(e.request);
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(e.request, response.clone());
+            console.log(`[Service Worker] Cached new resource: ${e.request.url}`);
+            return response;
+        } catch {
+            // Fall back to cache if fetch failed
+            const r = await caches.match(e.request);
+            if (r) return r;
+        }
+        return new Response("Service Unavailable", { status: 503, statusText: "Service Unavailable" });
     })());
 });
