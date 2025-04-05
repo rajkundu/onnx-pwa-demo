@@ -48,23 +48,24 @@ self.addEventListener('fetch', (e) => {
     }
 
     e.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+
         // force ONNX files to be cache-first since they're large
         if (e.request.url.endsWith(".onnx")) {
             console.log("Returning ONNX from cache");
-            const r = await caches.match(e.request);
+            const r = await cache.match(e.request);
             if (r) return r;
         }
 
         try {
             // Fetch
             const response = await fetch(e.request);
-            const cache = await caches.open(CACHE_NAME);
             cache.put(e.request, response.clone());
             console.log(`[Service Worker] Cached new resource: ${e.request.url}`);
             return response;
         } catch {
             // Fall back to cache if fetch failed
-            const r = await caches.match(e.request);
+            const r = await cache.match(e.request);
             if (r) return r;
         }
         return new Response("Service Unavailable", { status: 503, statusText: "Service Unavailable" });
