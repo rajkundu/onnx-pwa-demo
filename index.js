@@ -1,4 +1,4 @@
-async function tiffFileToDataURL(file) {
+function tiffFileToDataURL(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = function (e) {
@@ -35,7 +35,7 @@ async function visualizeImgTensor(imgTensor, imageEl) {
     imageEl.src = canvas.toDataURL();
 }
 
-async function imageFileToTensor(file) {
+function imageFileToTensor(file) {
     const reader = new FileReader();
     const imgElement = new Image();
     return new Promise(async (resolve, reject) => {
@@ -89,7 +89,7 @@ async function imageFileToTensor(file) {
     });
 }
 
-async function hideBSModal(bsModal) {
+function forceHideBSModal(bsModal) {
     // Remove from DOM upon being hidden
     bsModal._element.addEventListener('hidden.bs.modal', function () {
         bsModal._element.remove();
@@ -101,33 +101,38 @@ async function hideBSModal(bsModal) {
     });
 }
 
+function makeBSModal(modalContentHTML) {
+    var modalElement = document.createElement('div');
+    modalElement.classList.add('modal', 'fade');
+    modalElement.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            ${modalContentHTML}
+        </div>
+    </div>
+    `;
+    document.body.appendChild(modalElement);
+    return new bootstrap.Modal(modalElement);
+}
+
 var activeModel = null;
 const modelSelect = document.querySelector('#modelSelect');
 modelSelect.addEventListener('change', onModelSelectChange);
 async function onModelSelectChange(e) {
     activeModel = MODELS[e.target.value];
 
-    var modalElement = document.createElement('div');
-    modalElement.classList.add('modal', 'fade');
-    modalElement.id = 'loadingModal';
-    modalElement.tabIndex = -1;
-    modalElement.setAttribute('aria-hidden', 'true');
-    modalElement.setAttribute('data-bs-backdrop', 'static');
-    modalElement.setAttribute('data-bs-keyboard', 'false');
-    modalElement.innerHTML = `
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body">
-                <h4>Loading ${activeModel.name} Model...</h4>
-                <div class="progress" style="height: 30px;">
-                    <div id="modelDownloadProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
-                </div>
+    const bsModal = makeBSModal(`
+        <div class="modal-body">
+            <h4>Loading ${activeModel.name} Model...</h4>
+            <div class="progress" style="height: 30px;">
+                <div id="modelDownloadProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
             </div>
         </div>
-    </div>
-    `;
-    document.body.appendChild(modalElement);
-    var bsModal = new bootstrap.Modal(modalElement);
+    `);
+    bsModal._element.tabIndex = -1;
+    bsModal._element.setAttribute('aria-hidden', 'true');
+    bsModal._element.setAttribute('data-bs-backdrop', 'static');
+    bsModal._element.setAttribute('data-bs-keyboard', 'false');
     bsModal.show();
 
     let progressBar = document.querySelector("#modelDownloadProgress");
@@ -142,7 +147,7 @@ async function onModelSelectChange(e) {
         activeModel = null;
         return;
     } finally {
-        hideBSModal(bsModal);
+        forceHideBSModal(bsModal);
     }
 
     // Enable input
@@ -158,61 +163,49 @@ async function onModelSelectChange(e) {
 async function onRunButtonPress() {
     clearOutputs();
 
-    var modalElement = document.createElement('div');
-    modalElement.classList.add('modal', 'fade');
-    modalElement.id = 'loadingModal';
-    modalElement.tabIndex = -1;
-    modalElement.setAttribute('aria-hidden', 'true');
-    modalElement.setAttribute('data-bs-backdrop', 'static');
-    modalElement.setAttribute('data-bs-keyboard', 'false');
-    modalElement.innerHTML = `
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body">
-                <h4>Running ${activeModel.name} Model...<span></span></h4>
-                <div class="progress" style="height: 30px;">
-                    <div id="runProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
-                </div>
+    const bsModal = makeBSModal(`
+        <div class="modal-body">
+            <h4>Running ${activeModel.name} Model...<span></span></h4>
+            <div class="progress" style="height: 30px;">
+                <div id="runProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
             </div>
         </div>
-    </div>
-    `;
-    document.body.appendChild(modalElement);
-    var bsModal = new bootstrap.Modal(modalElement);
+    `);
+    bsModal._element.tabIndex = -1;
+    bsModal._element.setAttribute('aria-hidden', 'true');
+    bsModal._element.setAttribute('data-bs-backdrop', 'static');
+    bsModal._element.setAttribute('data-bs-keyboard', 'false');
     bsModal.show();
-    const progressBar = modalElement.querySelector("#runProgress");
-    const modalHeader = modalElement.querySelector("h4 span");
+    const progressBar = bsModal._element.querySelector("#runProgress");
+    const modalHeader = bsModal._element.querySelector("h4 span");
 
-    outputs = [];
+    // Table to display outputs
+    const table = document.querySelector("#multiOutputContainer table");
+    // Set up table header
+    const columns = ["filename", "quality", "raw", "inferenceTimeMs"];
+    let thead = document.createElement("thead");
+    thead.classList.add("table-light");
+    thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
+    table.appendChild(thead);
+    // Set up table body (empty)
+    let tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+
     for (let idx = 0; idx < dropzone.files.length; idx++) {
+        // Run model on input
         let file = dropzone.files[idx];
         const rawInputTensor = await imageFileToTensor(file); // tensor will be in Tensorflow shape = (batch_size * H * W * C)
         const runData = await activeModel.run(rawInputTensor);
-        outputs.push(runData);
 
+        // Update progress bar modal
         const percent = Math.round(((idx+1) / dropzone.files.length) * 100);
         if (progressBar) {
             progressBar.style.width = `${percent}%`;
             progressBar.innerText = `${percent}%`;
         }
         modalHeader.innerText = ` (${idx+1}/${dropzone.files.length})`;
-    }
 
-    hideBSModal(bsModal);
-
-    const table = document.querySelector("#multiOutputContainer table");
-    const columns = ["filename", "quality", "raw", "inferenceTimeMs"]; // TODO: Generalize this; build table dynamically based on array of outputs?
-    let thead = document.createElement("thead");
-    thead.classList.add("table-light");
-    thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
-    table.appendChild(thead);
-    let tbody = document.createElement("tbody");
-
-    for (let idx = 0; idx < outputs.length; idx++) {
-        let runData = outputs[idx];
-        console.log(runData);
-        let file = dropzone.files[idx];
-
+        // Add row to table
         let tr = tbody.insertRow();
         tr.innerHTML = `
             <td>${file.webkitRelativePath ? file.webkitRelativePath : file.name}</td>
@@ -220,20 +213,30 @@ async function onRunButtonPress() {
             <td>${runData.output.raw.toFixed(8)}</td>
             <td>${runData.inferenceTimeMs.toFixed(0)}</td>
         `;
+        // Conditional styling, poor quality is highlighted as red
+        if (runData.output.label.toUpperCase() === "POOR") {
+            tr.classList.add("table-danger");
+        }
     }
-    table.appendChild(tbody);
+
+    // Hide modal
+    forceHideBSModal(bsModal);
+
+    // Display table
     document.querySelector("#multiOutputContainer").classList.remove("d-none");
 }
 
 function clearOutputs() {
-    document.querySelector('#outputContainer').innerHTML = "";
-    document.querySelector('#outputContainer').classList.add("d-none");
     document.querySelector('#multiOutputContainer').classList.add("d-none");
     document.querySelector('#multiOutputContainer table').innerHTML = "";
 }
 
-function exportMultiOutputTableToCSV() {
-    const rows = Array.from(document.querySelectorAll('#multiOutputContainer table tr'));
+function htmlTableToCSV(table_el) {
+    if (!table_el) {
+        console.warn(`Cannot convert invalid table element ${table_el} to CSV!`);
+        return;
+    }
+    const rows = Array.from(table_el.querySelectorAll('tr'));
     const csv = rows.map(row =>
       Array.from(row.cells).map(cell => `"${cell.innerText.replace('"', '""')}"`).join(',')
     ).join('\n');

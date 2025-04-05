@@ -33,10 +33,9 @@
         <button onclick="onRunButtonPress()" class="btn btn-success disabled">Run Model</button>
     </div>
 
-    <div id="outputContainer" class="mt-3 d-none"></div>
     <div id="multiOutputContainer" class="mt-4 d-none">
         <h3>Output Data</h3>
-        <button type="button" class="btn btn-info mb-2" onclick="exportMultiOutputTableToCSV()">Download as CSV...</button>
+        <button type="button" class="btn btn-info mb-2" onclick="htmlTableToCSV(this.parentElement.querySelector('table'))">Download as CSV...</button>
         <table class="table table-bordered table-sm"></table>
     </div>
 
