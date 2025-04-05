@@ -1,13 +1,49 @@
+class ONNXModel {
+    constructor({
+            name,
+            onnx_path,
+            load = async function() {
+                this.ortSession = await ort.InferenceSession.create(this.onnx_path);
+            },
+            preprocess = raw_input => raw_input,
+            run = async function(raw_input) {
+                const preprocess_start = performance.now();
+                const ortInputs = await this.preprocess(raw_input);
+                const preprocess_end = performance.now();
+                const ortOutputs = await this.ortSession.run(ortInputs);
+                const inference_end = performance.now();
+                const processed_output = await this.postprocess(ortOutputs);
+                const postprocess_end = performance.now();
+                return {
+                    output: processed_output,
+                    preprocessTimeMs: preprocess_end-preprocess_start,
+                    inferenceTimeMs: inference_end-preprocess_end,
+                    postprocessTimeMs: postprocess_end-inference_end
+                };
+            },
+            postprocess = raw_input => raw_input
+        } = {}) {
+        this.name = name;
+        this.onnx_path = onnx_path;
+        this.load = load;
+        this.preprocess = preprocess;
+        this.postprocess = postprocess;
+        this.run = run;
+
+        this.ortSession = null;
+    }
+}
+
 const COMMON_BUCKET_URL = "https://pub-9133bb6240c146bda04d936a663ab7bc.r2.dev/image_quality";
 const MODELS = [
-    {
+    new ONNXModel({
         name: 'GCIPL',
         onnx_path: `${COMMON_BUCKET_URL}/GCIPL.onnx`,
-        onnx_loader_fn: async (model_path) => {
-            return await ort.InferenceSession.create(await loadONNXBufferWithCaching(model_path), { executionProviders: ['cpu'] });
+        load: async function(progress_callback) {
+            console.log("hi");
+            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
-        output_labels: ["Good", "Poor"], // different than the other models!!
-        preprocess_fn: async (input_tensor) => {
+        preprocess: async function(input_tensor) {
             var processed_tensor = input_tensor;
             if (processed_tensor.shape.length === 3) {
                 processed_tensor = processed_tensor.expandDims(0);
@@ -45,16 +81,27 @@ const MODELS = [
             };
 
             return ortInputs;
+        },
+        postprocess: function(ortOutputs) {
+            const ortOutputTensor = ortOutputs[this.ortSession.outputNames[0]];
+            const outputRaw = ortOutputTensor.data[0];
+            const outputSigmoid = tf.tensor(outputRaw).sigmoid();
+            const outputSigmoidRounded = outputSigmoid.round().toInt().dataSync()[0];
+
+            const output_labels = ["Good", "Poor"]; // different than the other models!!
+            const outputLabel = output_labels[outputSigmoidRounded];
+
+            return { raw: outputRaw, sigmoided: outputSigmoid, label: outputLabel };
         }
-    },
-    {
+    }),
+
+    new ONNXModel({
         name: 'Ang3x3',
         onnx_path: `${COMMON_BUCKET_URL}/Ang3x3.onnx`,
-        onnx_loader_fn: async (model_path) => {
-            return await ort.InferenceSession.create(await loadONNXBufferWithCaching(model_path), { executionProviders: ['cpu'] });
+        load: async function(progress_callback) {
+            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
-        output_labels: ["Poor", "Good"],
-        preprocess_fn: async (input_tensor) => {
+        preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
             if (processed_tensor.shape.length === 3) {
                 processed_tensor = processed_tensor.expandDims(0);
@@ -76,16 +123,27 @@ const MODELS = [
             };
 
             return ortInputs;
+        },
+        postprocess: function(ortOutputs) {
+            const ortOutputTensor = ortOutputs[this.ortSession.outputNames[0]];
+            const outputRaw = ortOutputTensor.data[0];
+            const outputSigmoid = tf.tensor(outputRaw).sigmoid();
+            const outputSigmoidRounded = outputSigmoid.round().toInt().dataSync()[0];
+
+            const output_labels = ["Poor", "Good"];
+            const outputLabel = output_labels[outputSigmoidRounded];
+
+            return { raw: outputRaw, sigmoided: outputSigmoid, label: outputLabel };
         }
-    },
-    {
+    }),
+
+    new ONNXModel({
         name: 'HD21',
         onnx_path: `${COMMON_BUCKET_URL}/HD21.onnx`,
-        onnx_loader_fn: async (model_path) => {
-            return await ort.InferenceSession.create(await loadONNXBufferWithCaching(model_path), { executionProviders: ['cpu'] });
+        load: async function(progress_callback) {
+            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
-        output_labels: ["Poor", "Good"],
-        preprocess_fn: async (input_tensor) => {
+        preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
             if (processed_tensor.shape.length === 3) {
                 processed_tensor = processed_tensor.expandDims(0);
@@ -107,16 +165,27 @@ const MODELS = [
             };
 
             return ortInputs;
+        },
+        postprocess: function(ortOutputs) {
+            const ortOutputTensor = ortOutputs[this.ortSession.outputNames[0]];
+            const outputRaw = ortOutputTensor.data[0];
+            const outputSigmoid = tf.tensor(outputRaw).sigmoid();
+            const outputSigmoidRounded = outputSigmoid.round().toInt().dataSync()[0];
+
+            const output_labels = ["Poor", "Good"];
+            const outputLabel = output_labels[outputSigmoidRounded];
+
+            return { raw: outputRaw, sigmoided: outputSigmoid, label: outputLabel };
         }
-    },
-    {
+    }),
+
+    new ONNXModel ({
         name: 'ONH4.5',
         onnx_path: `${COMMON_BUCKET_URL}/ONH4.5.onnx`,
-        onnx_loader_fn: async (model_path) => {
-            return await ort.InferenceSession.create(await loadONNXBufferWithCaching(model_path), { executionProviders: ['cpu'] });
+        load: async function(progress_callback) {
+            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
-        output_labels: ["Poor", "Good"],
-        preprocess_fn: async (input_tensor) => {
+        preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
             if (processed_tensor.shape.length === 3) {
                 processed_tensor = processed_tensor.expandDims(0);
@@ -130,7 +199,7 @@ const MODELS = [
             processed_tensor = tf.image.resizeBilinear(processed_tensor, [resizeHeight, resizeWidth], false);
 
             // Default Tensorflow shape is (batch_size * H * W * C)
-            // but model was trained in PyTorch, so use shape (batch_size * C * H * W)
+            // but model was trained in PyTorch, so convert tf tensor to shape (batch_size * C * H * W)
             processed_tensor = processed_tensor.transpose([0, 3, 1, 2]);
 
             const ortInputs = {
@@ -138,6 +207,17 @@ const MODELS = [
             };
 
             return ortInputs;
+        },
+        postprocess: function(ortOutputs) {
+            const ortOutputTensor = ortOutputs[this.ortSession.outputNames[0]];
+            const outputRaw = ortOutputTensor.data[0];
+            const outputSigmoid = tf.tensor(outputRaw).sigmoid();
+            const outputSigmoidRounded = outputSigmoid.round().toInt().dataSync()[0];
+
+            const output_labels = ["Poor", "Good"];
+            const outputLabel = output_labels[outputSigmoidRounded];
+
+            return { raw: outputRaw, sigmoided: outputSigmoid, label: outputLabel };
         }
-    },
+    }),
 ]

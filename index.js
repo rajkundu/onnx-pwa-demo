@@ -42,28 +42,25 @@ async function imageFileToTensor(file) {
         if (file.name.endsWith(".json")) {
             const reader = new FileReader();
 
-            // Step 1: Read the JSON file as text
+            // Read JSON file as text
             reader.onload = function (e) {
                 try {
-                    // Step 2: Parse the JSON data
+                    // Parse JSON data
                     const jsonData = JSON.parse(e.target.result);
 
-                    // Check if jsonData is a valid 3D array (HxWx3)
+                    // Check if JSON data is a valid 3D array (HxWx3)
                     if (!Array.isArray(jsonData) || !Array.isArray(jsonData[0]) || !Array.isArray(jsonData[0][0])) {
                         console.error("Invalid JSON structure");
                         return;
                     }
 
-                    // Step 3: Flatten the data
-                    const flatData = jsonData.flat(2);  // Flatten the HxWx3 array to a 1D array
+                    // Convert to flattened 1D tf tensor
+                    const flatData = jsonData.flat(2);
+                    const tensor = tf.tensor(flatData); // Convert to tf tensor
 
-                    // Step 4: Convert the flat array to a TensorFlow tensor
-                    const tensor = tf.tensor(flatData);
-
-                    // Step 5: Reshape the tensor to the original shape (height, width, 3)
+                    // Reshape tensor to tf shape (height, width, 3)
                     const height = jsonData.length;
                     const width = jsonData[0].length;
-
                     const reshapedTensor = tensor.reshape([height, width, 3]);
 
                     // Print the tensor or use it for further processing
@@ -75,7 +72,7 @@ async function imageFileToTensor(file) {
                 }
             };
 
-            // Step 6: Read the file as text
+            // Read JSON file as text
             reader.readAsText(file);
         } else if (file.type === "image/tiff") {
             imgElement.src = await tiffFileToDataURL(file);
@@ -92,23 +89,23 @@ async function imageFileToTensor(file) {
     });
 }
 
-async function runModel(model, ortSession, ortInputs) {
-    if (model == null || ortSession == null) {
-        alert("Please ensure that the model has loaded!");
-        return;
-    }
-    if (ortInputs == null) {
-        alert("No input provided!");
-    }
-    return await ortSession.run(ortInputs);
+async function hideBSModal(bsModal) {
+    // Remove from DOM upon being hidden
+    bsModal._element.addEventListener('hidden.bs.modal', function () {
+        bsModal._element.remove();
+    });
+    bsModal.hide();
+    // in case we're too fast and hide is called during the show animation
+    bsModal._element.addEventListener('shown.bs.modal', function () {
+        bsModal.hide();
+    });
 }
 
-var model = null;
-var ortSession = null;
+var activeModel = null;
 const modelSelect = document.querySelector('#modelSelect');
 modelSelect.addEventListener('change', onModelSelectChange);
 async function onModelSelectChange(e) {
-    model = MODELS[e.target.value];
+    activeModel = MODELS[e.target.value];
 
     var modalElement = document.createElement('div');
     modalElement.classList.add('modal', 'fade');
@@ -121,39 +118,38 @@ async function onModelSelectChange(e) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-body">
-                <h4>Loading ${model.name} Model...</h4>
+                <h4>Loading ${activeModel.name} Model...</h4>
                 <div class="progress" style="height: 30px;">
-                    <div id="modelDownloadProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
+                    <div id="modelDownloadProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
                 </div>
             </div>
         </div>
     </div>
     `;
     document.body.appendChild(modalElement);
-    var modal = new bootstrap.Modal(modalElement);
-    modal.show();
+    var bsModal = new bootstrap.Modal(modalElement);
+    bsModal.show();
 
+    let progressBar = document.querySelector("#modelDownloadProgress");
     try {
-        ortSession = await model.onnx_loader_fn(model.onnx_path);
+        await activeModel.load((progress_fraction) => {
+            const percent = Math.round(progress_fraction * 100);
+            progressBar.style.width = `${percent}%`;
+            progressBar.innerText = `${percent}%`;
+        });
+        console.log(activeModel.ortSession);
     } catch {
-        model = null;
+        activeModel = null;
         return;
     } finally {
-        // Remove from DOM upon being hidden
-        modalElement.addEventListener('hidden.bs.modal', function () {
-            modalElement.remove();
-        });
-        modal.hide();
-        // in case we're too fast and hide is called during the show animation
-        modalElement.addEventListener('shown.bs.modal', function () {
-            modal.hide();
-        });
+        hideBSModal(bsModal);
     }
 
     // Enable input
     dropzone.element.classList.remove("disabled");
     dropzone.element.querySelector('.dz-message').textContent =  "Drag & drop, or click to browse...";
     dropzone.enable();
+    console.log("enabled dropzone");
 
     // Clear outputs
     clearOutputs();
@@ -173,7 +169,7 @@ async function onRunButtonPress() {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-body">
-                <h4>Running ${model.name} Model...<span></span></h4>
+                <h4>Running ${activeModel.name} Model...<span></span></h4>
                 <div class="progress" style="height: 30px;">
                     <div id="runProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;">0%</div>
                 </div>
@@ -182,22 +178,17 @@ async function onRunButtonPress() {
     </div>
     `;
     document.body.appendChild(modalElement);
-    var modal = new bootstrap.Modal(modalElement);
-    modal.show();
+    var bsModal = new bootstrap.Modal(modalElement);
+    bsModal.show();
     const progressBar = modalElement.querySelector("#runProgress");
     const modalHeader = modalElement.querySelector("h4 span");
 
-    allOrtOutputs = [];
-    allInferenceTimes = [];
+    outputs = [];
     for (let idx = 0; idx < dropzone.files.length; idx++) {
         let file = dropzone.files[idx];
         const rawInputTensor = await imageFileToTensor(file); // tensor will be in Tensorflow shape = (batch_size * H * W * C)
-        const ortInputs = await model.preprocess_fn(rawInputTensor);
-        const start = performance.now();  // Start timing
-        const ortOutputs = await ortSession.run(ortInputs);
-        const end = performance.now();  // End timing
-        allOrtOutputs.push(ortOutputs);
-        allInferenceTimes.push(end - start);
+        const runData = await activeModel.run(rawInputTensor);
+        outputs.push(runData);
 
         const percent = Math.round(((idx+1) / dropzone.files.length) * 100);
         if (progressBar) {
@@ -207,48 +198,28 @@ async function onRunButtonPress() {
         modalHeader.innerText = ` (${idx+1}/${dropzone.files.length})`;
     }
 
-    // Remove from DOM upon being hidden
-    modalElement.addEventListener('hidden.bs.modal', function () {
-        modalElement.remove();
-    });
-    modal.hide();
-    // in case we're too fast and hide is called during the show animation
-    modalElement.addEventListener('shown.bs.modal', function () {
-        modal.hide();
-    });
+    hideBSModal(bsModal);
 
     const table = document.querySelector("#multiOutputContainer table");
-    const columns = ["filename", "quality", "outputRaw", "inferenceTimeMs"];
+    const columns = ["filename", "quality", "raw", "inferenceTimeMs"]; // TODO: Generalize this; build table dynamically based on array of outputs?
     let thead = document.createElement("thead");
     thead.classList.add("table-light");
     thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
     table.appendChild(thead);
     let tbody = document.createElement("tbody");
 
-    var ortOutputTensor, outputRaw, outputSigmoid, outputSigmoidRounded, outputLabel, inferenceTime;
-    for (let idx = 0; idx < allOrtOutputs.length; idx++) {
-        let ortOutputs = allOrtOutputs[idx];
+    for (let idx = 0; idx < outputs.length; idx++) {
+        let runData = outputs[idx];
+        console.log(runData);
         let file = dropzone.files[idx];
-        ortOutputTensor = ortOutputs[ortSession.outputNames[0]];
-        outputRaw = ortOutputTensor.data;
-        outputSigmoid = tf.tensor(outputRaw).sigmoid();
-        outputSigmoidRounded = outputSigmoid.round().toInt().dataSync()[0];
-        outputLabel = model.output_labels[outputSigmoidRounded];
 
-        inferenceTime = allInferenceTimes[idx];
-
-        let tr = document.createElement("tr");
-        if (outputLabel.toUpperCase() === "POOR") {
-            tr.classList.add("table-danger");
-        }
-        console.log(file.webkitRelativePath);
+        let tr = tbody.insertRow();
         tr.innerHTML = `
             <td>${file.webkitRelativePath ? file.webkitRelativePath : file.name}</td>
-            <td>${outputLabel}</td>
-            <td>${outputRaw[0].toFixed(8)}</td>
-            <td>${allInferenceTimes[idx].toFixed(0)}</td>
+            <td>${runData.output.label}</td>
+            <td>${runData.output.raw.toFixed(8)}</td>
+            <td>${runData.inferenceTimeMs.toFixed(0)}</td>
         `;
-        tbody.appendChild(tr);
     }
     table.appendChild(tbody);
     document.querySelector("#multiOutputContainer").classList.remove("d-none");

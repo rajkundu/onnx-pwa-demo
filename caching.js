@@ -45,69 +45,53 @@ async function storeModel(buffer, model_key) {
     });
 }
 
-async function loadONNXBufferWithCaching(onnx_url) {
-    let storedModel = await retrieveModel(onnx_url);
+async function downloadFileWithChunking(response, progress_callback=undefined) {
+    const contentLength = response.headers.get("Content-Length");
+    const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
 
-    var arr = null;
-    if (storedModel) {
-        console.log(`Loading model from IndexedDB (${onnx_url})`);
-        arr = new Uint8Array(storedModel);
+    if (totalSize) {
+        const reader = response.body.getReader();
+        const buffer = new Uint8Array(totalSize);
+        let offset = 0;
+        let loadedSize = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer.set(value, offset);
+            offset += value.length;
+            loadedSize += value.length;
+
+            if (progress_callback) {
+                progress_callback(loadedSize / totalSize);
+            }
+        }
+        return buffer;
+    } else {
+        console.warn("Content-Length header is missing. Downloading without chunking.");
+        const arrayBuffer = await response.arrayBuffer();
+        return new Uint8Array(arrayBuffer);
+    }
+}
+
+async function loadONNXWithCaching(onnx_url, progress_callback=undefined) {
+    var model = await retrieveModel(onnx_url);
+
+    if (model) {
+        console.log(`Loaded model from IndexedDB (${onnx_url})`);
     } else {
         console.log(`Fetching model from web (${onnx_url})`);
 
         const response = await fetch(onnx_url);
-        var arrayBuffer = null;
-
-        const progressBar = document.querySelector("#modelDownloadProgress");
-        if (progressBar) {
-            const contentLength = response.headers.get("Content-Length");
-            if (!contentLength) { console.warn("Content-Length header is missing. Cannot track progress accurately."); }
-            const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
-
-            let loadedSize = 0;
-            const reader = response.body.getReader();
-            // Allocate a buffer for the whole file upfront (more efficient)
-            const chunks = [];
-            let totalBytes = 0;
-
-            // Read chunks and update progress bar
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                chunks.push(value);
-                loadedSize += value.length;
-                totalBytes += value.length;
-
-                if (totalSize) {
-                    const percent = Math.round((loadedSize / totalSize) * 100);
-                    if (progressBar) {
-                        progressBar.style.width = `${percent}%`;
-                        progressBar.innerText = `${percent}%`;
-                    }
-                }
-            }
-
-            console.log("Download complete. Combining chunks...");
-
-            // Create a single Uint8Array to hold all data
-            arrayBuffer = new Uint8Array(totalBytes);
-            let offset = 0;
-            for (const chunk of chunks) {
-                arrayBuffer.set(chunk, offset);
-                offset += chunk.length;
-            }
-        } else {
-            arrayBuffer = await response.arrayBuffer();
-        }
+        model = await downloadFileWithChunking(response, progress_callback);
 
         // Store model for future use
-        await storeModel(arrayBuffer, onnx_url);
+        await storeModel(model, onnx_url);
         console.log("Stored model in IndexedDB");
-        arr = new Uint8Array(arrayBuffer);
     }
 
-    return arr;
+    return model;
 }
 
 function clearStoredModels() {
