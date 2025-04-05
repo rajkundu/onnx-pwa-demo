@@ -101,8 +101,9 @@ function forceHideBSModal(bsModal) {
     });
 }
 
-function makeBSModal(modalContentHTML) {
+function makeModalElement(modalContentHTML) {
     var modalElement = document.createElement('div');
+    modalElement.id = "myModal";
     modalElement.classList.add('modal', 'fade');
     modalElement.innerHTML = `
     <div class="modal-dialog modal-dialog-centered">
@@ -112,7 +113,7 @@ function makeBSModal(modalContentHTML) {
     </div>
     `;
     document.body.appendChild(modalElement);
-    return new bootstrap.Modal(modalElement);
+    return modalElement;
 }
 
 var activeModel = null;
@@ -121,7 +122,7 @@ modelSelect.addEventListener('change', onModelSelectChange);
 async function onModelSelectChange(e) {
     activeModel = MODELS[e.target.value];
 
-    const bsModal = makeBSModal(`
+    const modalElement = makeModalElement(`
         <div class="modal-body">
             <h4>Loading ${activeModel.name} Model...</h4>
             <div class="progress" style="height: 30px;">
@@ -129,10 +130,11 @@ async function onModelSelectChange(e) {
             </div>
         </div>
     `);
-    bsModal._element.tabIndex = -1;
-    bsModal._element.setAttribute('aria-hidden', 'true');
-    bsModal._element.setAttribute('data-bs-backdrop', 'static');
-    bsModal._element.setAttribute('data-bs-keyboard', 'false');
+    modalElement.tabIndex = -1;
+    modalElement.setAttribute('aria-hidden', 'true');
+    modalElement.setAttribute('data-bs-backdrop', 'static');
+    modalElement.setAttribute('data-bs-keyboard', 'false');
+    const bsModal = new bootstrap.Modal(modalElement);
     bsModal.show();
 
     let progressBar = document.querySelector("#modelDownloadProgress");
@@ -163,7 +165,7 @@ async function onModelSelectChange(e) {
 async function onRunButtonPress() {
     clearOutputs();
 
-    const bsModal = makeBSModal(`
+    const modalElement = makeModalElement(`
         <div class="modal-body">
             <h4>Running ${activeModel.name} Model...<span></span></h4>
             <div class="progress" style="height: 30px;">
@@ -171,10 +173,11 @@ async function onRunButtonPress() {
             </div>
         </div>
     `);
-    bsModal._element.tabIndex = -1;
-    bsModal._element.setAttribute('aria-hidden', 'true');
-    bsModal._element.setAttribute('data-bs-backdrop', 'static');
-    bsModal._element.setAttribute('data-bs-keyboard', 'false');
+    modalElement.tabIndex = -1;
+    modalElement.setAttribute('aria-hidden', 'true');
+    modalElement.setAttribute('data-bs-backdrop', 'static');
+    modalElement.setAttribute('data-bs-keyboard', 'false');
+    const bsModal = new bootstrap.Modal(modalElement);
     bsModal.show();
     const progressBar = bsModal._element.querySelector("#runProgress");
     const modalHeader = bsModal._element.querySelector("h4 span");
