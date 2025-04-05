@@ -40,8 +40,7 @@ const MODELS = [
         name: 'GCIPL',
         onnx_path: `${COMMON_BUCKET_URL}/GCIPL.onnx`,
         load: async function(progress_callback) {
-            console.log("hi");
-            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
         preprocess: async function(input_tensor) {
             var processed_tensor = input_tensor;
@@ -99,7 +98,7 @@ const MODELS = [
         name: 'Ang3x3',
         onnx_path: `${COMMON_BUCKET_URL}/Ang3x3.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
@@ -141,7 +140,7 @@ const MODELS = [
         name: 'HD21',
         onnx_path: `${COMMON_BUCKET_URL}/HD21.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
@@ -183,7 +182,7 @@ const MODELS = [
         name: 'ONH4.5',
         onnx_path: `${COMMON_BUCKET_URL}/ONH4.5.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await loadONNXWithCaching(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;

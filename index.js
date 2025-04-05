@@ -118,6 +118,24 @@ function makeModalElement(modalContentHTML) {
 
 var activeModel = null;
 const modelSelect = document.querySelector('#modelSelect');
+async function updateModelSelect() {
+    for (var idx = 0; idx < MODELS.length; idx++) {
+        // don't access .options directly with index since we may have placeholder options, etc.
+        const option = modelSelect.querySelector(`option[value="${idx}"]`);
+        let model = MODELS[idx];
+        if (await modelIsCached(model)) {
+            option.textContent = model.name + " (Cached)"; // show this even if online so user knows which need caching
+        } else {
+            if (navigator.onLine) {
+                option.textContent = model.name;
+                option.disabled = false;
+            } else {
+                option.textContent = model.name + " (Unavailable)";
+                option.disabled = true;
+            }
+        }
+    };
+}
 modelSelect.addEventListener('change', onModelSelectChange);
 async function onModelSelectChange(e) {
     activeModel = MODELS[e.target.value];
@@ -160,6 +178,14 @@ async function onModelSelectChange(e) {
 
     // Clear outputs
     clearOutputs();
+
+    // Update to show the user that the model is now cached
+    updateModelSelect();
+}
+
+async function onClearCacheButtonPress() {
+    await clearCaches();
+    updateModelSelect();
 }
 
 async function onRunButtonPress() {
@@ -255,12 +281,13 @@ function htmlTableToCSV(table_el) {
 
 var dropzone = null;
 document.addEventListener("DOMContentLoaded", async function() {
-    MODELS.forEach((model, idx) => {
+    for (var idx = 0; idx < MODELS.length; idx++) {
+        const model = MODELS[idx];
         let option = document.createElement('option');
         option.value = idx;
         option.textContent = model.name;
         modelSelect.appendChild(option);
-    });
+    };
 
     dropzone = new Dropzone("#inputDropzone", {
         url: "javascript:void(0);", // No actual upload, just processing files
@@ -293,4 +320,29 @@ document.addEventListener("DOMContentLoaded", async function() {
             this.element.classList.add("disabled");
         }
     });
+
+    // Determine whether we're online
+    navigator.onLine ? goOnline() : goOffline();
 });
+
+async function modelIsCached(model) {
+    return await caches.match(new Request(model.onnx_path)) ? true : false;
+}
+
+// Register PWA Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js');
+}
+
+async function goOnline() {
+    console.log('App is online.');
+    updateModelSelect();
+}
+
+async function goOffline() {
+    console.log('App is offline.');
+    updateModelSelect();
+}
+
+window.addEventListener('online', goOnline);
+window.addEventListener('offline', goOffline);
