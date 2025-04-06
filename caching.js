@@ -29,6 +29,10 @@ async function downloadFileWithChunking(onnx_url, progress_callback=undefined) {
     }
 }
 
+async function modelIsCached(model) {
+    return await caches.match(new Request(model.onnx_path)) ? true : false;
+}
+
 async function clearCaches() {
     await caches.keys().then(cacheNames => {
         return Promise.all(

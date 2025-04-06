@@ -185,7 +185,7 @@ async function onModelSelectChange(e) {
 
 async function onClearCacheButtonPress() {
     await clearCaches();
-    updateModelSelect();
+    window.location.reload();
 }
 
 async function onRunButtonPress() {
@@ -277,7 +277,7 @@ function htmlTableToCSV(table_el) {
     a.download = 'output.csv';
     a.click();
     URL.revokeObjectURL(url);
-  }
+}
 
 var dropzone = null;
 document.addEventListener("DOMContentLoaded", async function() {
@@ -325,24 +325,19 @@ document.addEventListener("DOMContentLoaded", async function() {
     navigator.onLine ? goOnline() : goOffline();
 });
 
-async function modelIsCached(model) {
-    return await caches.match(new Request(model.onnx_path)) ? true : false;
-}
+// --------- PWA Config ---------- //
 
 // Register PWA Service Worker
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js');
 }
-
 async function goOnline() {
     console.log('App is online.');
     updateModelSelect();
 }
-
 async function goOffline() {
     console.log('App is offline.');
     updateModelSelect();
 }
-
 window.addEventListener('online', goOnline);
 window.addEventListener('offline', goOffline);
