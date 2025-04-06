@@ -34,13 +34,25 @@ class ONNXModel {
     }
 }
 
+const inferenceSessionOptions = {
+    // NOTE! WebGL doesn't support dynamic input shapes (e.g., variable batch size).
+    // adding "freeDimensionOverrides: { batch_size: 1 }" to the options list doesn't seem to work.
+    // See https://onnxruntime.ai/docs/tutorials/mobile/helpers/make-dynamic-shape-fixed.html
+    // and https://github.com/microsoft/onnxruntime/issues/13909
+    executionProviders: [
+        'webgpu',
+        // 'webgl', // disabled; see note above
+        'cpu'
+    ]
+}
+
 const COMMON_BUCKET_URL = "https://pub-9133bb6240c146bda04d936a663ab7bc.r2.dev/image_quality";
 const MODELS = [
     new ONNXModel({
         name: 'GCIPL',
         onnx_path: `${COMMON_BUCKET_URL}/GCIPL.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), inferenceSessionOptions);
         },
         preprocess: async function(input_tensor) {
             var processed_tensor = input_tensor;
@@ -98,7 +110,7 @@ const MODELS = [
         name: 'Ang3x3',
         onnx_path: `${COMMON_BUCKET_URL}/Ang3x3.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), inferenceSessionOptions);
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
@@ -140,7 +152,7 @@ const MODELS = [
         name: 'HD21',
         onnx_path: `${COMMON_BUCKET_URL}/HD21.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), inferenceSessionOptions);
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
@@ -182,7 +194,7 @@ const MODELS = [
         name: 'ONH4.5',
         onnx_path: `${COMMON_BUCKET_URL}/ONH4.5.onnx`,
         load: async function(progress_callback) {
-            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), { executionProviders: ['cpu'] });
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnx_path, progress_callback), inferenceSessionOptions);
         },
         preprocess: async (input_tensor) => {
             var processed_tensor = input_tensor;
