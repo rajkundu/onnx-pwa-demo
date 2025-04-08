@@ -21,7 +21,7 @@ class ONNXModel {
                     postprocessTimeMs: postprocess_end-inference_end
                 };
             },
-            postprocess = raw_input => raw_input
+            postprocess = raw_output => raw_output
         } = {}) {
         this.name = name;
         this.onnx_path = onnx_path;
