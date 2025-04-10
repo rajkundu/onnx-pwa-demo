@@ -185,6 +185,19 @@ async function onModelSelectChange(e) {
 
 async function onClearCacheButtonPress() {
     await clearCaches();
+
+    // Unregister service worker
+    if ('serviceWorker' in navigator) {
+        await navigator.serviceWorker.getRegistration().then(function(registration) {
+            if (registration) {
+                registration.unregister();
+                console.log("Unregistered service worker");
+            } else {
+                console.log("No service worker to unregister.");
+            }
+        });
+    }
+
     window.location.reload();
 }
 
