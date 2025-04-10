@@ -19,7 +19,7 @@ async function saveTensorToJSON(tensor) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'tensor_data.json';
+    a.download = 'tensorData.json';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -157,8 +157,8 @@ async function onModelSelectChange(e) {
 
     let progressBar = document.querySelector("#modelDownloadProgress");
     try {
-        await activeModel.load((progress_fraction) => {
-            const percent = Math.round(progress_fraction * 100);
+        await activeModel.load((progressFraction) => {
+            const percent = Math.round(progressFraction * 100);
             progressBar.style.width = `${percent}%`;
             progressBar.innerText = `${percent}%`;
         });
@@ -273,12 +273,12 @@ function clearOutputs() {
     document.querySelector('#multiOutputContainer table').innerHTML = "";
 }
 
-function htmlTableToCSV(table_el) {
-    if (!table_el) {
-        console.warn(`Cannot convert invalid table element ${table_el} to CSV!`);
+function htmlTableToCSV(tableEl) {
+    if (!tableEl) {
+        console.warn(`Cannot convert invalid table element ${tableEl} to CSV!`);
         return;
     }
-    const rows = Array.from(table_el.querySelectorAll('tr'));
+    const rows = Array.from(tableEl.querySelectorAll('tr'));
     const csv = rows.map(row =>
       Array.from(row.cells).map(cell => `"${cell.innerText.replace('"', '""')}"`).join(',')
     ).join('\n');

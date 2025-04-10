@@ -1,5 +1,17 @@
-async function downloadFileWithChunking(onnx_url, progress_callback=undefined) {
-    const response = await fetch(onnx_url);
+/**
+ * A callback function to be called during progression of an iterative process, e.g., downloading a file
+ * @callback progressCallback
+ * @param {number} progressFraction - decimal value representing completion progress, e.g., 0.6 for 60%
+ */
+
+/**
+ *
+ * @param {string} fetchURL - URL of file to be downloaded using fetch()
+ * @param {progressCallback} [progressCallback] - A callback function to be called during the download loop
+ * @returns {Promise<Uint8Array>} data from response body, stored as array buffer
+ */
+async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
+    const response = await fetch(fetchURL);
     const contentLength = response.headers.get("Content-Length");
     const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
 
@@ -17,8 +29,8 @@ async function downloadFileWithChunking(onnx_url, progress_callback=undefined) {
             offset += value.length;
             loadedSize += value.length;
 
-            if (progress_callback) {
-                progress_callback(loadedSize / totalSize);
+            if (progressCallback) {
+                progressCallback(loadedSize / totalSize);
             }
         }
         return buffer;
@@ -29,10 +41,18 @@ async function downloadFileWithChunking(onnx_url, progress_callback=undefined) {
     }
 }
 
+/**
+ * Checks whether an ONNXModel object's underlying onnx file exists in the browser’s cache.
+ * @param {ONNXModel} model - an ONNXModel object
+ * @returns {Promise<boolean>} whether model exists in browser's cache
+ */
 async function modelIsCached(model) {
-    return await caches.match(new Request(model.onnx_path)) ? true : false;
+    return await caches.match(new Request(model.onnxPath)) ? true : false;
 }
 
+/**
+ * Deletes all data from the browser cache
+ */
 async function clearCaches() {
     await caches.keys().then(cacheNames => {
         return Promise.all(

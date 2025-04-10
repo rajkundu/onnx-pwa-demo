@@ -17,6 +17,13 @@ const precacheResources = [
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js'
 ];
 
+/**
+ * This function is called when the service worker is installed and precaches all
+ * resources in precacheResources. All resources integral to the functioning of your
+ * ML model offline, including UI elements, should be precached. This ensures that
+ * the website works offline from the very next time the user loads it without relying
+ * on browser caching.
+ */
 self.addEventListener('install', event => {
     console.log(`Service Worker installing '${CACHE_NAME}'`);
     self.skipWaiting();
@@ -27,6 +34,10 @@ self.addEventListener('install', event => {
     );
 });
 
+/**
+ * This function is called when a new service worker is activated, and is used here
+ * to clean up (i.e., delete) old caches from existing service workers.
+ */
 self.addEventListener('activate', event => {
     console.log(`Service Worker activating '${CACHE_NAME}'`);
     const whitelist = [CACHE_NAME];
@@ -42,6 +53,18 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
+/**
+ * This function is called whenever a network request is made, e.g. UI libraries
+ * and other dependencies are referenced in index.html. It acts as a proxy between
+ * the application and the internet and thus can implement arbitrarily complex
+ * logic for determining offline functionality.
+ *
+ * In the current implementation, most resources are continously fetched whenever
+ * the user is online and saved/updated in cache. This way, the next time that the
+ * user goes offline, the cache will have the latest versions all resources. This
+ * is as opposed to strictly cache-first logic, which would cache resources just
+ * once and continue using them indefinitely without updating them.
+ */
 self.addEventListener('fetch', (e) => {
     // Cache http and https only, skip unsupported e.g. chrome-extension:// and file://...
     if (!(e.request.url.startsWith('http:') || e.request.url.startsWith('https:'))) {
