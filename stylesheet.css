@@ -1,0 +1,65 @@
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    align-items: center;
+    row-gap: 0.5em;
+    min-height: 100dvh;
+}
+
+#modelSelect, #imageInputWrapper {
+    width: 80%;
+    max-width: 600px;
+}
+
+#multiOutputContainer {
+    min-width: 40%;
+}
+
+#inputDropzone {
+    border-radius: 1em;
+    border: 0.2em black dashed;
+    background: #e6e6e6;
+    justify-content: center;
+    max-width: 80%;
+    max-height: 500px;
+    overflow-y: scroll;
+}
+
+#inputDropzone.disabled {
+    border: 0.2em #ddd dashed;
+    background: #eaeaea;
+    color: #aaa;
+    cursor: not-allowed;
+}
+#inputDropzone.disabled button {
+    cursor: not-allowed;
+}
+
+#inputDropzone.dz-started {
+    border: 0.1em black solid;
+}
+
+#inputDropzone .dz-preview .dz-progress {
+    display: none !important;
+}
+#inputDropzone .dz-preview.dz-image-preview {
+    background: none;
+}
+#inputDropzone .dz-details .dz-filename {
+    display: flex;
+    justify-content: center;
+}
+
+#inputDropzone .dz-image {
+    display: flex;
+}
+
+#modelButtonContainer {
+    flex-direction: row;
+}
+
+#multiOutputTable tr > td:first-child {
+    text-align: left;
+}
