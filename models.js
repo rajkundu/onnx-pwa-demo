@@ -59,6 +59,11 @@ const MODELS = [
 
             const [cropHeight, cropWidth] = [224, 224];
 
+            // Add outer batch size dimension if necessary
+            if (processed_tensor.shape.length === 3) {
+                processed_tensor = processed_tensor.expandDims(0);
+            }
+
             // Calculate the center crop box dynamically
             const [batch, height, width, channels] = processed_tensor.shape;
             const xmin = Math.round((width - cropWidth) / 2.0);
@@ -81,11 +86,6 @@ const MODELS = [
             const mean = tf.tensor([0.485, 0.456, 0.406]);
             const std = tf.tensor([0.229, 0.224, 0.225]);
             processed_tensor = processed_tensor.sub(mean).div(std);
-
-            // Add outer batch size dimension if necessary
-            if (processed_tensor.shape.length === 3) {
-                processed_tensor = processed_tensor.expandDims(0);
-            }
 
             // Default Tensorflow shape is (batch_size * H * W * C)
             // but model was trained in PyTorch, so convert tf tensor to shape (batch_size * C * H * W)
