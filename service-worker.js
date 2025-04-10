@@ -7,6 +7,7 @@ const precacheResources = [
     'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js',
     'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+    '/stylesheet.css',
     'https://cdn.jsdelivr.net/npm/tiff.js@1.0.0/tiff.min.js',
     'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js',
     'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
@@ -60,8 +61,14 @@ self.addEventListener('fetch', (e) => {
         try {
             // Fetch
             const response = await fetch(e.request);
-            cache.put(e.request, response.clone());
-            console.log(`[Service Worker] Cached new resource: ${e.request.url}`);
+            e.waitUntil((async () => {
+                try {
+                    await cache.put(e.request, response.clone());
+                    console.log(`[Service Worker] Cached resource: ${e.request.url}`);
+                } catch (err) {
+                    console.error(`[Service Worker] Failed to cache ${e.request.url}: ${err}`);
+                }
+            })());
             return response;
         } catch {
             // Fall back to cache if fetch failed
