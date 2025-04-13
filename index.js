@@ -209,10 +209,12 @@ if ('serviceWorker' in navigator) {
 }
 async function goOnline() {
     console.log('App is online.');
+    document.querySelector('#offlineHeading').innerText = "";
     updateModelSelect();
 }
 async function goOffline() {
     console.log('App is offline.');
+    document.querySelector('#offlineHeading').innerText = " (Offline)";
     updateModelSelect();
 }
 window.addEventListener('online', goOnline);
