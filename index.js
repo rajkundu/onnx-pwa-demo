@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 // Register PWA Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js');
+    navigator.serviceWorker.register('./service-worker.js');
 }
 async function goOnline() {
     console.log('App is online.');
