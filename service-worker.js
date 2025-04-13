@@ -6,12 +6,13 @@ const precacheResources = [
     // all resources in index.html (in order of appearance)
     'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.js',
     'https://cdn.jsdelivr.net/npm/dropzone@5.9.3/dist/min/dropzone.min.css',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css',
     '/stylesheet.css',
     'https://cdn.jsdelivr.net/npm/tiff.js@1.0.0/tiff.min.js',
     'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.min.js',
     'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js',
-    '/caching.js',
+    '/utils.js',
+    '/ONNXModel.js',
     '/models.js',
     '/index.js',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js'
@@ -28,8 +29,14 @@ self.addEventListener('install', event => {
     console.log(`Service Worker installing '${CACHE_NAME}'`);
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(precacheResources);
+        caches.open(CACHE_NAME).then(async (cache) => {
+            for (const url of precacheResources) {
+                try {
+                    await cache.add(url);
+                } catch (err) {
+                    console.warn(`[Service Worker] Failed to pre-cache resource at '${url}'!`);
+                }
+            }
         })
     );
 });
@@ -76,9 +83,11 @@ self.addEventListener('fetch', (e) => {
 
         // force ONNX files to be cache-first since they're large
         if (e.request.url.endsWith(".onnx")) {
-            console.log("Returning ONNX from cache");
             const r = await cache.match(e.request);
-            if (r) return r;
+            if (r) {
+                console.log("Returning ONNX from cache");
+                return r;
+            }
         }
 
         try {

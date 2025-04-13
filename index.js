@@ -1,126 +1,8 @@
-function tiffFileToDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const tiffData = e.target.result;
-            const tiff = new Tiff({ buffer: tiffData });
-            resolve(tiff.toCanvas().toDataURL());
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
-    });
-}
-
-// Function to save tensor to JSON file
-async function saveTensorToJSON(tensor) {
-    const tensorArray = await tensor.array();
-    const tensorJSON = JSON.stringify(tensorArray);
-    const blob = new Blob([tensorJSON], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'tensorData.json';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-async function visualizeImgTensor(imgTensor, imageEl) {
-    var dispTensor = imgTensor.squeeze();  // Remove batch dimension, shape: [224, 224, 3]
-
-    // Scale pixel values to [0, 255]
-    dispTensor = imgTensor.mul(tf.scalar(dispTensor.max().dataSync()[0] <= 1.0 ? 255.0 : 1.0)).clipByValue(0, 255).cast('int32');
-
-    const canvas = document.createElement('canvas');
-    await tf.browser.toPixels(dispTensor, canvas);
-    imageEl.src = canvas.toDataURL();
-}
-
-function imageFileToTensor(file) {
-    const reader = new FileReader();
-    const imgElement = new Image();
-    return new Promise(async (resolve, reject) => {
-        if (file.name.endsWith(".json")) {
-            const reader = new FileReader();
-
-            // Read JSON file as text
-            reader.onload = function (e) {
-                try {
-                    // Parse JSON data
-                    const jsonData = JSON.parse(e.target.result);
-
-                    // Check if JSON data is a valid 3D array (HxWx3)
-                    if (!Array.isArray(jsonData) || !Array.isArray(jsonData[0]) || !Array.isArray(jsonData[0][0])) {
-                        console.error("Invalid JSON structure");
-                        return;
-                    }
-
-                    // Convert to flattened 1D tf tensor
-                    const flatData = jsonData.flat(2);
-                    const tensor = tf.tensor(flatData); // Convert to tf tensor
-
-                    // Reshape tensor to tf shape (height, width, 3)
-                    const height = jsonData.length;
-                    const width = jsonData[0].length;
-                    const reshapedTensor = tensor.reshape([height, width, 3]);
-
-                    // Print the tensor or use it for further processing
-                    reshapedTensor.print();  // This will print the tensor to the console
-
-                    resolve(reshapedTensor);
-                } catch (error) {
-                    console.error("Error reading or parsing JSON:", error);
-                }
-            };
-
-            // Read JSON file as text
-            reader.readAsText(file);
-        } else if (file.type === "image/tiff") {
-            imgElement.src = await tiffFileToDataURL(file);
-            imgElement.onload = () => resolve(tf.browser.fromPixels(imgElement).toFloat());
-            imgElement.onerror = reject;
-        } else {
-            reader.onload = e => {
-                imgElement.src = e.target.result;
-                imgElement.onload = () => resolve(tf.browser.fromPixels(imgElement).toFloat());
-                imgElement.onerror = reject;
-            };
-            reader.readAsDataURL(file);
-        }
-    });
-}
-
-function forceHideBSModal(bsModal) {
-    // Remove from DOM upon being hidden
-    bsModal._element.addEventListener('hidden.bs.modal', function () {
-        bsModal._element.remove();
-    });
-    bsModal.hide();
-    // in case we're too fast and hide is called during the show animation
-    bsModal._element.addEventListener('shown.bs.modal', function () {
-        bsModal.hide();
-    });
-}
-
-function makeModalElement(modalContentHTML) {
-    var modalElement = document.createElement('div');
-    modalElement.id = "myModal";
-    modalElement.classList.add('modal', 'fade');
-    modalElement.innerHTML = `
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            ${modalContentHTML}
-        </div>
-    </div>
-    `;
-    document.body.appendChild(modalElement);
-    return modalElement;
-}
-
 var activeModel = null;
 const modelSelect = document.querySelector('#modelSelect');
 async function updateModelSelect() {
     for (var idx = 0; idx < MODELS.length; idx++) {
-        // don't access .options directly with index since we may have placeholder options, etc.
+        // don't access .options directly with index since we may have placeholders, headings, etc.
         const option = modelSelect.querySelector(`option[value="${idx}"]`);
         let model = MODELS[idx];
         if (await modelIsCached(model)) {
@@ -136,8 +18,10 @@ async function updateModelSelect() {
         }
     };
 }
-modelSelect.addEventListener('change', onModelSelectChange);
-async function onModelSelectChange(e) {
+modelSelect.addEventListener('change', async function(e) {
+    // if (activeModel && activeModel.ortSession) {
+    //     activeModel.ortSession.release();
+    // }
     activeModel = MODELS[e.target.value];
 
     const modalElement = makeModalElement(`
@@ -162,7 +46,6 @@ async function onModelSelectChange(e) {
             progressBar.style.width = `${percent}%`;
             progressBar.innerText = `${percent}%`;
         });
-        console.log(activeModel.ortSession);
     } catch {
         activeModel = null;
         return;
@@ -174,23 +57,22 @@ async function onModelSelectChange(e) {
     dropzone.element.classList.remove("disabled");
     dropzone.element.querySelector('.dz-message').textContent =  "Drag & drop, or click to browse...";
     dropzone.enable();
-    console.log("enabled dropzone");
 
     // Clear outputs
     clearOutputs();
 
     // Update to show the user that the model is now cached
     updateModelSelect();
-}
+});
 
-async function onClearCacheButtonPress() {
+document.querySelector('#clearCacheButton').addEventListener('click', async function() {
     await clearCaches();
 
     // Unregister service worker
     if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.getRegistration().then(function(registration) {
+        await navigator.serviceWorker.getRegistration().then(async function(registration) {
             if (registration) {
-                registration.unregister();
+                await registration.unregister();
                 console.log("Unregistered service worker");
             } else {
                 console.log("No service worker to unregister.");
@@ -199,9 +81,9 @@ async function onClearCacheButtonPress() {
     }
 
     window.location.reload();
-}
+});
 
-async function onRunButtonPress() {
+document.querySelector('#runButton').addEventListener('click', async function() {
     clearOutputs();
 
     const modalElement = makeModalElement(`
@@ -266,30 +148,11 @@ async function onRunButtonPress() {
 
     // Display table
     document.querySelector("#multiOutputContainer").classList.remove("d-none");
-}
+});
 
 function clearOutputs() {
     document.querySelector('#multiOutputContainer').classList.add("d-none");
     document.querySelector('#multiOutputContainer table').innerHTML = "";
-}
-
-function htmlTableToCSV(tableEl) {
-    if (!tableEl) {
-        console.warn(`Cannot convert invalid table element ${tableEl} to CSV!`);
-        return;
-    }
-    const rows = Array.from(tableEl.querySelectorAll('tr'));
-    const csv = rows.map(row =>
-      Array.from(row.cells).map(cell => `"${cell.innerText.replace('"', '""')}"`).join(',')
-    ).join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'output.csv';
-    a.click();
-    URL.revokeObjectURL(url);
 }
 
 var dropzone = null;
