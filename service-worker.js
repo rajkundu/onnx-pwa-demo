@@ -93,7 +93,7 @@ self.addEventListener('fetch', (e) => {
         try {
             // Fetch
             const response = await fetch(e.request);
-            e.waitUntil((async () => {
+            await e.waitUntil((async () => {
                 try {
                     await cache.put(e.request, response.clone());
                     console.log(`[Service Worker] Cached resource: ${e.request.url}`);
