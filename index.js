@@ -185,10 +185,13 @@ document.addEventListener("DOMContentLoaded", async function() {
                 clearOutputs();
             });
             this.on("thumbnail", async function (file, dataUrl) {
+                const previewImg = file.previewElement.querySelector(".dz-image img");
                 if (file.type === "image/tiff") {
-                    const previewImg = file.previewElement.querySelector(".dz-image img");
-                    previewImg.src = await tiffFileToDataURL(file);
+                    previewImg.src = await tiffFileToDataURL(file); // convert TIFF to PNG
                 }
+
+                // Free dataURL string; we will just keep the raw buffer
+                delete file.dataURL;
             });
 
             // Disable by default, until a model is selected
