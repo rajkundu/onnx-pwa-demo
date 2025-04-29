@@ -125,7 +125,7 @@ const MODELS = [
     }),
 
     new ONNXModel({
-        name: 'HD21',
+        name: 'EDI-OCT',
         onnxPath: `${FILE_BUCKET_URL}/HD21.onnx`,
         load: async function(progressCallback) {
             this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnxPath, progressCallback), INFERENCE_SESSION_OPTIONS);
