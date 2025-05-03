@@ -1,4 +1,4 @@
-const CACHE_NAME = 'demo-pwa-cache-v1';
+const CACHE_NAME = 'demo-pwa-cache-v1.0.1';
 const precacheResources = [
     './',
     './index.html',
@@ -31,8 +31,10 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
             for (const url of precacheResources) {
+                const request = new Request(url);
+                const response = await fetch(request);
                 try {
-                    await cache.add(url);
+                    await cache.put(request, response.clone());
                 } catch (err) {
                     console.warn(`[Service Worker] Failed to pre-cache resource at '${url}'!`);
                 }
@@ -48,15 +50,16 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     console.log(`Service Worker activating '${CACHE_NAME}'`);
     const whitelist = [CACHE_NAME];
-    event.waitUntil(caches.keys().then(cacheNames => Promise.all(
+    event.waitUntil(async () => {
+        await caches.keys().then(cacheNames => Promise.all(
                 cacheNames.map(cache => {
                     if (!whitelist.includes(cache)) {
                         return caches.delete(cache);
                     }
                 })
             )
-        )
-    );
+        );
+    });
     self.clients.claim();
 });
 
