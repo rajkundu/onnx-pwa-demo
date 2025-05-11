@@ -48,8 +48,7 @@ modelSelect.addEventListener('change', async function(e) {
         });
     } catch (error) {
         activeModel = null;
-        console.error("Error initializing model:", error.message);
-        return;
+        throw error;
     } finally {
         forceHideBSModal(bsModal);
     }
