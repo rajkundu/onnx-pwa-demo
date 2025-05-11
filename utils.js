@@ -17,16 +17,21 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
 
     if (totalSize) {
         const reader = response.body.getReader();
-        const buffer = new Uint8Array(totalSize);
-        console.log("[download] expected total size:", totalSize);
+        let buffer = new Uint8Array(totalSize);
         let offset = 0;
         let loadedSize = 0;
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+            
+            // Content-Length header may be erroneously small, so manually expand the download buffer
+            if (offset + value.length > buffer.length) {
+                const newBuffer = new Uint8Array(Math.max(buffer.length * 2, offset + value.length));
+                newBuffer.set(buffer, 0);
+                buffer = newBuffer;
+            }
 
-            console.log("[download] current size + new chunk:", offset + value.length);
             buffer.set(value, offset);
             offset += value.length;
             loadedSize += value.length;
