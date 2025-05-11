@@ -14,6 +14,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
     const response = await fetch(fetchURL);
     const contentLength = response.headers.get("Content-Length");
     const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
+    console.log(`[Download] content-length/totalSize = ${totalSize}`);
 
     if (totalSize) {
         const reader = response.body.getReader();
@@ -27,7 +28,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
             
             // Content-Length header may be erroneously small, so manually expand the download buffer
             if (offset + value.length > buffer.length) {
-                const newBuffer = new Uint8Array(Math.max(buffer.length * 2, offset + value.length));
+                const newBuffer = new Uint8Array(Math.max(buffer.length * 1.25, offset + value.length));
                 newBuffer.set(buffer, 0);
                 buffer = newBuffer;
             }
@@ -35,10 +36,14 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
             buffer.set(value, offset);
             offset += value.length;
             loadedSize += value.length;
+            console.log(`[Download] loadedSize = ${loadedSize}`);
 
             if (progressCallback) {
                 progressCallback(loadedSize / buffer.size);
             }
+        }
+        if (buffer.length > loadedSize) {
+            buffer = buffer.slice(0, loadedSize); // this is a copy, not a view, so that the full original buffer can be freed
         }
         return buffer;
     } else {
