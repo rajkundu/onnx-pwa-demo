@@ -14,7 +14,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
     const response = await fetch(fetchURL);
     const contentLength = response.headers.get("Content-Length");
     const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
-    console.log(`[Download] content-length/totalSize = ${totalSize}`);
+    // console.log(`[Download] content-length/totalSize = ${totalSize}`); // for debugging
 
     if (totalSize) {
         const reader = response.body.getReader();
@@ -36,7 +36,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
             buffer.set(value, offset);
             offset += value.length;
             loadedSize += value.length;
-            console.log(`[Download] loadedSize = ${loadedSize}`);
+            // console.log(`[Download] loadedSize = ${loadedSize}`); // for debugging
 
             if (progressCallback) {
                 progressCallback(loadedSize / buffer.size);
