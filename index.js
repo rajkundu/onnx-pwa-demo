@@ -46,8 +46,9 @@ modelSelect.addEventListener('change', async function(e) {
             progressBar.style.width = `${percent}%`;
             progressBar.innerText = `${percent}%`;
         });
-    } catch {
+    } catch (error) {
         activeModel = null;
+        console.error("Error initializing model:", error.message);
         return;
     } finally {
         forceHideBSModal(bsModal);
