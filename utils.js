@@ -37,7 +37,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
             loadedSize += value.length;
 
             if (progressCallback) {
-                progressCallback(loadedSize / totalSize);
+                progressCallback(loadedSize / buffer.size);
             }
         }
         return buffer;
