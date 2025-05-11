@@ -1,7 +1,5 @@
 .DS_Store
 *.pt
-*.onnx
 *.jp*
 *.tif*
-*.py
-*.ipynb
+__pycache__/
