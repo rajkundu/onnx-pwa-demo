@@ -14,6 +14,58 @@ const INFERENCE_SESSION_OPTIONS = {
 
 const MODELS = [
     new ONNXModel ({
+        name: 'Choroidalyzer',
+        onnxPath: "./choroidalyzer_to_onnx/choroidalyzer.onnx",
+        load: async function(progressCallback) {
+            this.ortSession = await ort.InferenceSession.create(await downloadFileWithChunking(this.onnxPath, progressCallback), INFERENCE_SESSION_OPTIONS);
+        },
+        preprocess: async (inputTensor) => {
+            var processedTensor = inputTensor;
+
+            // Convert RGB to grayscale if necessary
+            if (processedTensor.shape[processedTensor.shape.length - 1] == 3) {
+                processedTensor = tf.image.rgbToGrayscale(processedTensor);
+            }
+
+            processedTensor = resizeWithSquarePadding(processedTensor, 768);
+
+            // Rescale from [0, 255] to [0.0, 1.0]
+            processedTensor = processedTensor.div(tf.scalar(255));
+
+            // Normalize: (x - mean) / std
+            const mean = 0.5;
+            const std = 0.5;
+            processedTensor = processedTensor.sub(mean).div(std);
+
+            // Add outer batch size dimension if necessary
+            if (processedTensor.shape.length === 3) {
+                processedTensor = processedTensor.expandDims(0);
+            }
+
+            // Default Tensorflow shape is (batch_size * H * W * C)
+            // but model uses shape (batch_size * C * H * W)
+            processedTensor = processedTensor.transpose([0, 3, 1, 2]);
+
+            // Convert tf tensor to ort inputs
+            const ortInputs = {
+                'x': new ort.Tensor('float32', new Float32Array(processedTensor.dataSync()), processedTensor.shape)
+            };
+            return ortInputs;
+        },
+        postprocess: function(ortOutputs) {
+            const ortOutputTensor = ortOutputs[this.ortSession.outputNames[0]];
+            const outputTf = tf.tensor(ortOutputTensor.data).reshape(ortOutputTensor.dims);
+
+            const DEFAULT_THRESHOLDS = [0.5, 0.5, 0.1];
+
+            const outputSigmoided = outputTf.squeeze().sigmoid();
+            const regionMask = outputSigmoided.gather(0).greaterEqual(DEFAULT_THRESHOLDS[0]);
+            const vesselMask = outputSigmoided.gather(1).greaterEqual(DEFAULT_THRESHOLDS[1]);
+
+            return { regionMask: regionMask, vesselMask: vesselMask };
+        }
+    }),
+    new ONNXModel ({
         name: 'VIT Face Expression Classification',
         onnxPath: "https://huggingface.co/trpakov/vit-face-expression/resolve/main/onnx/model.onnx",
         load: async function(progressCallback) {

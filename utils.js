@@ -193,7 +193,7 @@ function htmlTableToCSV(tableEl) {
     }
     const rows = Array.from(tableEl.querySelectorAll('tr'));
     const csv = rows.map(row =>
-      Array.from(row.cells).map(cell => `"${cell.innerText.replace('"', '""')}"`).join(',')
+        Array.from(row.cells).map(cell => `"${cell.innerText.replace('"', '""')}"`).join(',')
     ).join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -239,4 +239,28 @@ function makeModalElement(modalContentHTML) {
     `;
     document.body.appendChild(modalElement);
     return modalElement;
+}
+
+/**
+ * Helper function that resizes an image to fit into a square of a specified size by
+ * first padding it with black to make it a square, then resizing it
+ * @param {tf.tensor} imgTensor - TensorFlow tensor to be resized
+ * @param {int} targetSize - desired side-length of square into which image will be resized
+ */
+function resizeWithSquarePadding(imgTensor, targetSize) {
+    return tf.tidy(() => {
+        // Pad image to make shape into a square
+        const [h, w] = imgTensor.shape;
+        const sizeDiff = Math.abs(h - w);
+        const padTop = h < w ? Math.floor(sizeDiff / 2) : 0;
+        const padBottom = h < w ? sizeDiff - padTop : 0;
+        const padLeft = w < h ? Math.floor(sizeDiff / 2) : 0;
+        const padRight = w < h ? sizeDiff - padLeft : 0;
+        const imgTensorPadded = tf.pad(imgTensor, [
+            [padTop, padBottom],
+            [padLeft, padRight],
+            [0, 0]
+        ]);
+        return tf.image.resizeBilinear(imgTensorPadded, [targetSize, targetSize]);
+    });
 }

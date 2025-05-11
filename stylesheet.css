@@ -60,6 +60,10 @@ body {
     flex-direction: row;
 }
 
-#multiOutputTable tr > td:first-child {
-    text-align: left;
+#multiOutputContainer table {
+    vertical-align: middle;
+}
+#multiOutputContainer tr img {
+    max-width: 200px;
+    max-height: 200px;
 }

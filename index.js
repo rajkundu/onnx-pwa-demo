@@ -105,15 +105,9 @@ document.querySelector('#runButton').addEventListener('click', async function() 
 
     // Table to display outputs
     const table = document.querySelector("#multiOutputContainer table");
-    // Set up table header
-    const columns = ["filename", "quality", "raw", "inferenceTimeMs"];
+    // Create header and body elements but don't add them to table yet
     let thead = document.createElement("thead");
-    thead.classList.add("table-light");
-    thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
-    table.appendChild(thead);
-    // Set up table body (empty)
     let tbody = document.createElement("tbody");
-    table.appendChild(tbody);
 
     for (let idx = 0; idx < dropzone.files.length; idx++) {
         // Run model on input
@@ -131,15 +125,38 @@ document.querySelector('#runButton').addEventListener('click', async function() 
 
         // Add row to table
         let tr = tbody.insertRow();
-        tr.innerHTML = `
-            <td>${file.webkitRelativePath ? file.webkitRelativePath : file.name}</td>
-            <td>${runData.output.label}</td>
-            <td>${runData.output.raw.toFixed(8)}</td>
-            <td>${runData.inferenceTimeMs.toFixed(0)}</td>
-        `;
-        // Conditional styling, poor quality is highlighted as red
-        if (runData.output.label.toUpperCase() === "POOR") {
-            tr.classList.add("table-danger");
+        let columns = [];
+        if (activeModel.name == "Choroidalyzer") {
+            columns = ["filename", "input", "region mask", "vessel mask", "inferenceTimeMs"];
+            
+            const inputImg = document.createElement('img');
+            visualizeImgTensor(rawInputTensor, inputImg);
+            const regionMaskImg = document.createElement('img');
+            visualizeImgTensor(runData.output.regionMask, regionMaskImg);
+            const vesselMaskImg = document.createElement('img');
+            visualizeImgTensor(runData.output.vesselMask, vesselMaskImg);
+
+            tr.appendChild(Object.assign(document.createElement('td'), { textContent: file.webkitRelativePath ? file.webkitRelativePath : file.name }));
+            tr.appendChild(document.createElement('td').appendChild(inputImg).parentNode);
+            tr.appendChild(document.createElement('td').appendChild(regionMaskImg).parentNode);
+            tr.appendChild(document.createElement('td').appendChild(vesselMaskImg).parentNode);
+            tr.appendChild(Object.assign(document.createElement('td'), { textContent: runData.inferenceTimeMs.toFixed(0) }));
+        } else {
+            columns = ["filename", "quality", "raw", "inferenceTimeMs"];
+            tr.innerHTML = `
+                <td>${file.webkitRelativePath ? file.webkitRelativePath : file.name}</td>
+                <td>${runData.output.label}</td>
+                <td>${runData.output.raw.toFixed(8)}</td>
+                <td>${runData.inferenceTimeMs.toFixed(0)}</td>
+            `;
+        }
+
+        // Add table header & body if not already done
+        if (!thead.parentElement) {
+            thead.innerHTML = `<tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>`;
+            thead.classList.add("table-light");
+            table.appendChild(thead);
+            table.appendChild(tbody);
         }
     }
 
