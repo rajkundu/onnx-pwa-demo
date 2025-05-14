@@ -39,7 +39,7 @@ async function downloadFileWithChunking(fetchURL, progressCallback=undefined) {
             // console.log(`[Download] loadedSize = ${loadedSize}`); // for debugging
 
             if (progressCallback) {
-                progressCallback(loadedSize / buffer.size);
+                progressCallback(loadedSize / buffer.length);
             }
         }
         if (buffer.length > loadedSize) {
